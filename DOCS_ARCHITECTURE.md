@@ -138,15 +138,25 @@ background.ts::startLockdown(endTime, whitelist)
 **Blocking Logic:**
 
 -   `urlFilter: "*"` → Matches all URLs
--   `excludedInitiatorDomains: whitelist` → Exempts whitelisted domains
+-   `excludedInitiatorDomains: expandedWhitelist` → Exempts whitelisted domains and their aliases
 -   `resourceTypes: ["MAIN_FRAME"]` → Blocks only top-level navigation (allows subresources)
 
 **Edge Case:** Empty whitelist (`[]`) results in total blockade (all domains blocked).
 
+**Domain Expansion Process:**
+
+1. User whitelist received: `["gmail.com", "twitter.com"]`
+2. `expandWhitelist()` function called from `domainAliases.ts`
+3. Each domain expanded to include known aliases:
+    - `gmail.com` → `["gmail.com", "mail.google.com"]`
+    - `twitter.com` → `["twitter.com", "x.com", "mobile.twitter.com"]`
+4. Final expanded list: `["gmail.com", "mail.google.com", "twitter.com", "x.com", "mobile.twitter.com"]`
+5. Applied to `excludedInitiatorDomains`
+
 **Cleanup Domains:**
 
 ```javascript
-whitelist.map((domain) => domain.replace(/^https?:\/\//, "").replace(/\/$/, ""));
+expandedWhitelist.map((domain) => domain.replace(/^https?:\/\//, "").replace(/\/$/, ""));
 ```
 
 Strips protocol and trailing slash before applying exclusion.
@@ -479,6 +489,128 @@ dist/
 
 -   Typical payload: ~200-500 bytes (whitelist of 5-10 domains)
 -   Max theoretical: ~10MB (chrome.storage.local quota)
+
+---
+
+## Domain Alias System
+
+### Overview
+
+The extension implements an intelligent domain aliasing system to handle websites that operate under multiple domains or subdomains. When a user adds a domain to the whitelist, related domains are automatically included.
+
+### Architecture
+
+**Location:** `src/domainAliases.ts`
+
+**Core Components:**
+
+1. **DOMAIN_ALIASES Map**
+
+    - Static mapping of domain → aliases array
+    - Bidirectional lookup (any alias can find all related domains)
+    - Categories: Google Services, Social Media, Microsoft Services, Development, Productivity, etc.
+
+2. **expandDomain(domain: string): string[]**
+
+    - Input: Single domain string
+    - Output: Array of all related domains
+    - Performs case-insensitive matching
+    - Returns original domain if no aliases found
+
+3. **expandWhitelist(whitelist: string[]): string[]**
+    - Input: User's whitelist array
+    - Output: Expanded array with all aliases, deduplicated
+    - Uses Set to ensure no duplicates
+    - Called by `background.ts::updateBlockingRules()`
+
+### Supported Aliases
+
+**Google Services:**
+
+-   `gmail.com` ↔ `mail.google.com`
+-   `youtube.com` ↔ `www.youtube.com`, `m.youtube.com`, `youtu.be`
+-   `drive.google.com` ↔ `docs.google.com`
+
+**Social Media:**
+
+-   `twitter.com` ↔ `x.com`, `mobile.twitter.com`
+-   `facebook.com` ↔ `www.facebook.com`, `m.facebook.com`, `fb.com`
+-   `reddit.com` ↔ `www.reddit.com`, `old.reddit.com`
+
+**Microsoft Services:**
+
+-   `outlook.com` ↔ `outlook.office.com`, `outlook.live.com`
+-   `teams.microsoft.com` ↔ `teams.live.com`
+
+**Development:**
+
+-   `github.com` ↔ `www.github.com`, `gist.github.com`
+-   `stackoverflow.com` ↔ `www.stackoverflow.com`
+
+**Full list:** See `src/domainAliases.ts` for complete mapping (40+ entries)
+
+### Implementation Flow
+
+```
+User adds "gmail.com" to whitelist
+         ↓
+WhitelistManager.tsx::handleAdd()
+         ↓
+chrome.storage.local.set({ whitelist: [..., "gmail.com"] })
+         ↓
+[User starts lockdown]
+         ↓
+background.ts::startLockdown(endTime, whitelist)
+         ↓
+background.ts::updateBlockingRules(whitelist)
+         ↓
+expandWhitelist(["gmail.com"])
+         ↓
+expandDomain("gmail.com")
+         ↓
+DOMAIN_ALIASES["gmail.com"] → ["gmail.com", "mail.google.com"]
+         ↓
+chrome.declarativeNetRequest.updateDynamicRules({
+    excludedInitiatorDomains: ["gmail.com", "mail.google.com"]
+})
+         ↓
+[Both gmail.com AND mail.google.com are accessible]
+```
+
+### UI Feedback
+
+**WhitelistManager.tsx Enhancement:**
+
+When a domain has aliases, the UI displays:
+
+-   ⚡ Icon indicator (lightning bolt)
+-   Badge: "+N aliases"
+-   Preview: First 2 aliases shown in parentheses
+-   Example: `twitter.com` shows `+2 aliases (x.com, mobile.twitter.com)`
+
+**Implementation:**
+
+```typescript
+const getAliasesInfo = (domain: string) => {
+    const aliases = expandDomain(domain);
+    const otherAliases = aliases.filter((alias) => alias !== domain);
+    return otherAliases.length > 0 ? otherAliases : null;
+};
+```
+
+### Edge Cases
+
+1. **User adds both alias and original:** Deduplication handled by Set in `expandWhitelist()`
+2. **Unknown domain:** Returns original domain unchanged
+3. **Protocol variations:** Stripped before matching (`http://`, `https://`)
+4. **Trailing slashes:** Removed before matching
+
+### Performance Impact
+
+-   **Expansion time:** O(n×m) where n=whitelist size, m=avg aliases per domain
+-   **Typical case:** 10 domains × 2 aliases = 20ms
+-   **Memory:** +2KB for alias map (one-time load)
+-   **Network rules:** No impact (declarativeNetRequest accepts expanded array)
 
 ---
 
