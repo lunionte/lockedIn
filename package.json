@@ -5,7 +5,7 @@
     "description": "Chrome Extension for productivity with strict website blocking",
     "scripts": {
         "dev": "vite",
-        "build": "node create-icons.js && vite build",
+        "build": "vite build",
         "preview": "vite preview"
     },
     "dependencies": {
