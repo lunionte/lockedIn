@@ -57,13 +57,16 @@ function App() {
     };
 
     return (
-        <div className="w-full min-h-screen bg-gray-50 p-6">
-            <div className="max-w-md mx-auto">
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">Locked-In Mode</h1>
-
+        <div className="w-full min-h-screen bg-white">
+            <div className="p-6">
                 {!isActive ? (
                     <>
+                        <div className="mb-8 text-center">
+                            <h1 className="text-2xl font-bold text-gray-900 mb-1">Locked-In Mode</h1>
+                            <p className="text-sm text-gray-500">Focus on what matters most</p>
+                        </div>
                         <WhitelistManager whitelist={whitelist} onUpdate={handleWhitelistUpdate} />
+                        <div className="h-px bg-gray-200 my-6"></div>
                         <TimerControl onStart={handleStartTimer} />
                     </>
                 ) : (

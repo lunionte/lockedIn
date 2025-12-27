@@ -27,44 +27,88 @@ export default function WhitelistManager({ whitelist, onUpdate }: WhitelistManag
         }
     };
 
-    return (
-        <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Sites Permitidos</h2>
+    const getFavicon = (domain: string) => {
+        const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+        return `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=32`;
+    };
 
-            <div className="flex gap-2 mb-3">
+    return (
+        <div>
+            <div className="mb-4 text-center">
+                <h2 className="text-base font-semibold text-gray-900 mb-1">Allowed Sites</h2>
+                <p className="text-xs text-gray-500">Sites accessible during focus mode</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-md p-3 mb-3">
                 <input
                     type="text"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="exemplo.com"
-                    className="flex-1 px-3 py-2 border border-gray-300 text-gray-900 focus:outline-none focus:border-gray-900"
+                    placeholder="example.com"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all"
                 />
                 <button
                     onClick={handleAdd}
-                    className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+                    className="w-full mt-2 px-4 py-2 bg-emerald-400 text-white text-sm font-medium rounded hover:bg-emerald-500 transition-colors"
                 >
-                    Adicionar
+                    Add Site
                 </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-64 overflow-y-auto">
                 {whitelist.map((site, index) => (
                     <div
                         key={index}
-                        className="flex items-center justify-between px-3 py-2 bg-white border border-gray-200"
+                        className="flex items-center justify-between px-3 py-3 bg-white border border-gray-200 rounded shadow-sm hover:shadow-md transition-shadow"
                     >
-                        <span className="text-sm text-gray-900">{site}</span>
+                        <div className="flex items-center gap-3">
+                            <img
+                                src={getFavicon(site)}
+                                alt=""
+                                className="w-6 h-6 rounded"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src =
+                                        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNMTYgOEMxMS41ODE3IDggOCA5LjM0MzE1IDggMTFWMjFDOCAyMi42NTY5IDExLjU4MTcgMjQgMTYgMjRDMjAuNDE4MyAyNCAyNCAyMi42NTY5IDI0IDIxVjExQzI0IDkuMzQzMTUgMjAuNDE4MyA4IDE2IDhaIiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==";
+                                }}
+                            />
+                            <span className="text-sm font-medium text-gray-900">{site}</span>
+                        </div>
                         <button
                             onClick={() => handleRemove(index)}
-                            className="px-2 py-1 text-xs bg-red-600 text-white hover:bg-red-700 transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                         >
-                            Remover
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
                         </button>
                     </div>
                 ))}
                 {whitelist.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center py-4">Nenhum site na lista</p>
+                    <div className="text-center py-8">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-3">
+                            <svg
+                                className="w-6 h-6 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                />
+                            </svg>
+                        </div>
+                        <p className="text-sm text-gray-500">No allowed sites yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Add sites to access during focus mode</p>
+                    </div>
                 )}
             </div>
         </div>
