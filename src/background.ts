@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { Message, StorageData } from "./types";
+import { expandWhitelist } from "./domainAliases";
 
 // Gerenciamento do estado do lockdown
 chrome.runtime.onMessage.addListener((message: Message) => {
@@ -80,11 +81,18 @@ async function updateBlockingRules(whitelist: string[]) {
             ],
         });
     } else {
-        // Cria padrões de exclusão para a whitelist
-        const excludedDomains = whitelist.map((domain) => {
+        // Expande a whitelist para incluir domínios alternativos conhecidos
+        const expandedWhitelist = expandWhitelist(whitelist);
+
+        // Cria padrões de exclusão para a whitelist expandida
+        const excludedDomains = expandedWhitelist.map((domain) => {
             // Remove protocolo e barras
             return domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
         });
+
+        // Log para debug (pode ser removido em produção)
+        console.log("Original whitelist:", whitelist);
+        console.log("Expanded whitelist:", excludedDomains);
 
         // Bloqueia tudo exceto os domínios da whitelist
         await chrome.declarativeNetRequest.updateDynamicRules({
